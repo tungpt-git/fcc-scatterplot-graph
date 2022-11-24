@@ -21,15 +21,24 @@ const xAxis = d3.axisBottom(x).tickFormat(d3.format("d"));
 const yAxis = d3.axisLeft(y).tickFormat(timeFormat);
 //
 const svg = d3
-  .select("vis")
+  .select(".vis")
   .append("svg")
   .attr("width", width + margin.left + margin.right)
   .attr("height", height + margin.top + margin.bottom)
   .attr("class", "graph")
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+//
+const tooltip = d3
+  .select(".vis")
+  .append("div")
+  .attr("class", "tooltip")
+  .attr("id", "tooltip")
+  .style("opacity", 0);
 
 d3.json(url).then((data) => {
+  console.log(data);
+
   data.forEach(function (d) {
     d.Place = +d.Place;
     var parsedTime = d.Time.split(":");
@@ -69,4 +78,76 @@ d3.json(url).then((data) => {
     .attr("dy", ".71em")
     .style("text-anchor", "end")
     .text("Best Time (minutes)");
+
+  svg
+    .selectAll(".dot")
+    .data(data)
+    .enter()
+    .append("circle")
+    .attr("class", "dot")
+    .attr("r", 6)
+    .attr("fill", (d) => color(d.Doping !== ""))
+    .attr("cx", (d) => x(d.Year))
+    .attr("cy", (d) => y(d.Time))
+    .attr("data-xvalue", (d) => d.Year)
+    .attr("data-yvalue", (d) => d.Time.toISOString())
+    .on("mouseover", (d) => {
+      console.log(d);
+    })
+    .on("mouseover", function (event, d) {
+      tooltip.style("opacity", 0.9);
+      tooltip.attr("data-year", d.Year);
+      tooltip
+        .html(
+          d.Name +
+            ": " +
+            d.Nationality +
+            "<br/>" +
+            "Year: " +
+            d.Year +
+            ", Time: " +
+            timeFormat(d.Time) +
+            (d.Doping ? "<br/><br/>" + d.Doping : "")
+        )
+        .style("left", event.pageX + "px")
+        .style("top", event.pageY - 28 + "px");
+    })
+    .on("mouseout", function () {
+      tooltip.style("opacity", 0);
+    });
+
+  // legend
+
+  const legendContainer = svg.append("g").attr("id", "legend");
+
+  const legend = legendContainer
+    .selectAll("#legend")
+    .data(color.domain())
+    .enter()
+    .append("g")
+    .attr("class", "legend-label")
+    .attr("transform", function (d, i) {
+      return "translate(0," + (height / 2 - i * 20) + ")";
+    });
+
+  legend
+    .append("rect")
+    .attr("x", width - 18)
+    .attr("width", 18)
+    .attr("height", 18)
+    .style("fill", color);
+
+  legend
+    .append("text")
+    .attr("x", width - 24)
+    .attr("y", 9)
+    .attr("dy", ".35em")
+    .style("text-anchor", "end")
+    .text(function (d) {
+      if (d) {
+        return "Riders with doping allegations";
+      } else {
+        return "No doping allegations";
+      }
+    });
 });
